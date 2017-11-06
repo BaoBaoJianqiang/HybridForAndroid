@@ -1,0 +1,49 @@
+ul {
+    margin: 0 auto;
+    padding: 0;
+    max-width: 1280px;
+}
+
+a {
+    text-decoration: none;
+    color: white;
+}
+
+li {
+    list-style-type: none;
+}
+
+nav, .nav-submenu-list {
+    background: #25383c;
+    text-align: center;
+}
+
+.nav-submenu-list {
+    display: none;
+
+    position: absolute;
+    left: 0;
+    top: 100%;
+}
+
+.nav-list-item:hover> ul {
+    display: block;
+}
+
+.nav-list-item {
+    color: white;
+    float: left;
+    width: 25%;
+    width: calc(100%/4);
+    position: relative;
+}
+
+.nav-list-item a {
+    display: block;
+    padding: 20px 40px;
+}
+
+.clearfix {
+    display: block;
+    clear: both;
+}

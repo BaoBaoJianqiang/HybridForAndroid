@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.example.jianqiang.hybridapp.MainActivity">
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="最终版" />
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="解压apk中的zip包到本地sd卡" />
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="194dp"
+        android:layout_height="wrap_content"
+        android:text="合并patch，生成新的zip" />
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_width="197dp"
+        android:layout_height="wrap_content"
+        android:text="与WebView交互" />
+
+    <Button
+        android:id="@+id/button5"
+        android:layout_width="197dp"
+        android:layout_height="wrap_content"
+        android:text="下载zip文件" />
+</LinearLayout>
