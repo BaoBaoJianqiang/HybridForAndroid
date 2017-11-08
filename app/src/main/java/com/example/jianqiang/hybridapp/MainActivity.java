@@ -1,8 +1,10 @@
 package com.example.jianqiang.hybridapp;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
@@ -10,23 +12,19 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.example.jianqiang.hybridapp.tools.DirTraversal;
+import com.example.jianqiang.hybridapp.tools.Utils;
 import com.example.jianqiang.hybridapp.tools.ZipUtils;
+import com.cundong.utils.PatchUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
-import java.util.zip.ZipException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -42,11 +40,48 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
+
+    /**
+     * Checks if the app has permission to write to device storage
+     * If the app does not has permission then the user will be prompted to
+     * grant permissions
+     */
+    public void verifyStoragePermissions() {
+        // Check if we have write permission
+        int permission = ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE,
+                    REQUEST_EXTERNAL_STORAGE);
+        }
+    }
+
+    private static final int FLAG_SUCCESS = 0X00;
+
+    Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            File newFile = new File(mNewFilePath);
+            Utils.installApk(MainActivity.this,newFile);
+        }
+    };
+
+
+    static {
+        System.loadLibrary("ApkPatchLibrary");
+    }
+
+    private String mNewFilePath;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        verifyStoragePermissions();
         //进入到WebView页面
         Button button1 = (Button) findViewById(R.id.button1);
         button1.setOnClickListener(new View.OnClickListener() {
@@ -70,6 +105,14 @@ public class MainActivity extends AppCompatActivity {
         button3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (checkOrRequestPermission(PERMISSIONS_STORAGE)) {
+                            patchApk();
+                        }
+                    }
+                }).start();
 
             }
         });
@@ -92,6 +135,34 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
+    }
+
+    private void patchApk() {
+        File oldApk = this.getFileStreamPath("plug_old.apk");
+        String oldApkPath = oldApk.getPath();
+        File patchFile = this.getFileStreamPath("diff.patch");
+        String patchFilePath = patchFile.getPath();
+
+        mNewFilePath = Environment.getExternalStorageDirectory() + File.separator +"hybrid"+File.separator+ "new3.apk";
+
+        try {
+            int patchResult = PatchUtils.patch(oldApkPath, mNewFilePath, patchFilePath);
+            if(patchResult == 0) {
+                Log.e("bao", patchResult + "");
+                handler.sendEmptyMessage(FLAG_SUCCESS);
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(newBase);
+        Utils.extractAssets(newBase, "plug_old.apk");
+        Utils.extractAssets(newBase, "diff.patch");
     }
 
     @Override
