@@ -41,7 +41,6 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
-
     /**
      * Checks if the app has permission to write to device storage
      * If the app does not has permission then the user will be prompted to
@@ -60,13 +59,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final int FLAG_SUCCESS = 0X00;
+    private static final int FLAG_FAIL = 0X002;
 
-    Handler handler = new Handler(){
+    Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            File newFile = new File(mNewFilePath);
-            Utils.installApk(MainActivity.this,newFile);
+            //            File newFile = new File(mNewFilePath);
+            //            Utils.installApk(MainActivity.this,newFile);
+            switch (msg.what) {
+                case FLAG_SUCCESS:
+                    Toast.makeText(MainActivity.this, "合并成功", Toast.LENGTH_LONG).show();
+                    break;
+                case FLAG_FAIL:
+                    Toast.makeText(MainActivity.this, "合并失败", Toast.LENGTH_LONG).show();
+                    break;
+                default:
+                    break;
+            }
+
         }
     };
 
@@ -108,9 +119,7 @@ public class MainActivity extends AppCompatActivity {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        if (checkOrRequestPermission(PERMISSIONS_STORAGE)) {
-                            patchApk();
-                        }
+                        patchApk();
                     }
                 }).start();
 
@@ -138,21 +147,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void patchApk() {
-        File oldApk = this.getFileStreamPath("plug_old.apk");
+        File oldApk = this.getFileStreamPath("plug_old.zip");
         String oldApkPath = oldApk.getPath();
         File patchFile = this.getFileStreamPath("diff.patch");
         String patchFilePath = patchFile.getPath();
 
-        mNewFilePath = Environment.getExternalStorageDirectory() + File.separator +"hybrid"+File.separator+ "new3.apk";
+        mNewFilePath = Environment.getExternalStorageDirectory() + File.separator + "hybrid" + File.separator + "new3.zip";
 
         try {
             int patchResult = PatchUtils.patch(oldApkPath, mNewFilePath, patchFilePath);
-            if(patchResult == 0) {
+            if (patchResult == 0) {
                 Log.e("bao", patchResult + "");
                 handler.sendEmptyMessage(FLAG_SUCCESS);
+            } else {
+                handler.sendEmptyMessage(FLAG_FAIL);
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
@@ -161,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void attachBaseContext(Context newBase) {
         super.attachBaseContext(newBase);
-        Utils.extractAssets(newBase, "plug_old.apk");
+        Utils.extractAssets(newBase, "plug_old.zip");
         Utils.extractAssets(newBase, "diff.patch");
     }
 
@@ -198,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 try {
-                    ZipUtils.unApkFile(getApplication(), "hybrid.zip", pathString+ File.separator + "hybrid", true);
+                    ZipUtils.unApkFile(getApplication(), "hybrid.zip", pathString + File.separator + "hybrid", true);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
