@@ -1,9 +1,11 @@
 package com.example.jianqiang.hybridapp;
 
 import android.Manifest;
+import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -14,12 +16,13 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.cundong.utils.PatchUtils;
 import com.example.jianqiang.hybridapp.tools.Utils;
 import com.example.jianqiang.hybridapp.tools.ZipUtils;
-import com.cundong.utils.PatchUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +42,9 @@ public class MainActivity extends AppCompatActivity {
             put(PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
         }
     };
+    private DownloadManager.Request mRequest;
+    private DownloadManager downloadManager;
+    private String mDiffPatch;
 
 
     /**
@@ -139,19 +145,52 @@ public class MainActivity extends AppCompatActivity {
         button5.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                downloadFile();
             }
         });
 
 
     }
 
+    private void downloadFile() {
+        downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        String url = "https://raw.githubusercontent.com/LiPingStruggle/Patch/master/diff.patch";
+        //开始下载
+        Uri resource = Uri.parse(url);
+        mRequest = new DownloadManager.Request(resource);
+        mRequest.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_MOBILE | DownloadManager.Request.NETWORK_WIFI);
+        mRequest.setAllowedOverRoaming(false);
+        //设置文件类型
+        MimeTypeMap mimeTypeMap = MimeTypeMap.getSingleton();
+        String mimeString = mimeTypeMap.getMimeTypeFromExtension(MimeTypeMap.getFileExtensionFromUrl(url));
+        mRequest.setMimeType(mimeString);
+        //sdcard的目录下的download文件夹
+        mDiffPatch = Environment.getExternalStorageDirectory() + File.separator + "hybrid" + File.separator + "diff.patch";
+        File file = new File(mDiffPatch);
+        if (file != null && file.exists()) {
+            file.delete();//删除掉存在的file
+        }
+        mRequest.setDestinationUri(Uri.fromFile(file));//指定apk缓存路径
+        //        mRequest.setDestinationInExternalPublicDir("/hybrid/", "diff.patch");
+        mRequest.setShowRunningNotification(false);
+        mRequest.setVisibleInDownloadsUi(false);
+        downloadManager.enqueue(mRequest);
+        //        queryDownloadStatus();
+    }
+
+
     private void patchApk() {
         File oldApk = this.getFileStreamPath("plug_old.zip");
         String oldApkPath = oldApk.getPath();
         File patchFile = this.getFileStreamPath("diff.patch");
-        String patchFilePath = patchFile.getPath();
-
+        File file = new File(mDiffPatch);
+        String patchFilePath = "";
+        if (file != null && file.exists()) {
+            patchFilePath = mDiffPatch;
+        } else {
+            patchFilePath = patchFile.getPath();
+        }
+        Log.d("TAG", "patchApk: " + patchFilePath);
         mNewFilePath = Environment.getExternalStorageDirectory() + File.separator + "hybrid" + File.separator + "new3.zip";
 
         try {
