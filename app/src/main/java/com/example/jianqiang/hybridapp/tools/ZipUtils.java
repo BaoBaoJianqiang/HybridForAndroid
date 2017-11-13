@@ -323,9 +323,10 @@ public class ZipUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static void unzip(String zipFileName, String outputDirectory)
+	public static String unzip(String zipFileName, String outputDirectory)
 			throws IOException {
 		ZipFile zipFile = null;
+		String fileName = null;
 		try {
 			zipFile = new ZipFile(zipFileName);
 			Enumeration e = zipFile.entries();
@@ -359,6 +360,7 @@ public class ZipUtils {
 						}
 						File f = new File(outputDirectory + File.separator
 								+ zipEntry.getName());
+						fileName = f.getAbsolutePath();
 						// f.createNewFile();
 						in = zipFile.getInputStream(zipEntry);
 						out = new FileOutputStream(f);
@@ -398,6 +400,7 @@ public class ZipUtils {
 				}
 			}
 		}
+		return fileName;
 	}
 
 

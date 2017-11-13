@@ -1,11 +1,9 @@
 package com.example.jianqiang.hybridapp;
 
 import android.Manifest;
-import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -14,13 +12,15 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.Toast;
 
 import com.cundong.utils.PatchUtils;
+import com.example.jianqiang.hybridapp.http.HttpUtils;
+import com.example.jianqiang.hybridapp.tools.SpUtils;
 import com.example.jianqiang.hybridapp.tools.Utils;
 import com.example.jianqiang.hybridapp.tools.ZipUtils;
 
@@ -42,10 +42,7 @@ public class MainActivity extends AppCompatActivity {
             put(PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
         }
     };
-    private DownloadManager.Request mRequest;
-    private DownloadManager downloadManager;
-    private String mDiffPatch;
-
+    private static final String APP_VERSION = "APP_VERSION";
 
     /**
      * Checks if the app has permission to write to device storage
@@ -76,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
             switch (msg.what) {
                 case FLAG_SUCCESS:
                     Toast.makeText(MainActivity.this, "合并成功", Toast.LENGTH_LONG).show();
+                    //                    Utils.installApk(MainActivity.this,new File(mNewFilePath));
                     break;
                 case FLAG_FAIL:
                     Toast.makeText(MainActivity.this, "合并失败", Toast.LENGTH_LONG).show();
@@ -92,7 +90,6 @@ public class MainActivity extends AppCompatActivity {
         System.loadLibrary("ApkPatchLibrary");
     }
 
-    private String mNewFilePath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,12 +119,6 @@ public class MainActivity extends AppCompatActivity {
         button3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        patchApk();
-                    }
-                }).start();
 
             }
         });
@@ -145,59 +136,72 @@ public class MainActivity extends AppCompatActivity {
         button5.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                downloadFile();
+                new Thread() {
+                    @Override
+                    public void run() {
+                        try {
+                            String url = "https://raw.githubusercontent.com/LiPingStruggle/Patch/master/diff.patch.zip"; //diff.patch.zip
+                            String filePath = createPathSuffix(url);
+                            HttpUtils.downloadFile(url, filePath, new HttpCallback() {
+                                @Override
+                                public void progress(int progress, int total, String filePath) {
+                                    if (progress >= total) {
+                                        Log.d("Lip", "progress: 下载成功");
+                                        String fileName = null;
+                                        try {
+                                            fileName = ZipUtils.unzip(filePath, Environment.getExternalStorageDirectory() + File.separator + "hybrid");
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                        if (fileName != null) {
+                                            patchApk(fileName);
+                                        }
+
+                                    }
+                                }
+                            });
+                        } catch (Exception e) {
+
+                        }
+                    }
+                }.start();
             }
         });
 
 
     }
 
-    private void downloadFile() {
-        downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-        String url = "https://raw.githubusercontent.com/LiPingStruggle/Patch/master/diff.patch";
-        //开始下载
-        Uri resource = Uri.parse(url);
-        mRequest = new DownloadManager.Request(resource);
-        mRequest.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_MOBILE | DownloadManager.Request.NETWORK_WIFI);
-        mRequest.setAllowedOverRoaming(false);
-        //设置文件类型
-        MimeTypeMap mimeTypeMap = MimeTypeMap.getSingleton();
-        String mimeString = mimeTypeMap.getMimeTypeFromExtension(MimeTypeMap.getFileExtensionFromUrl(url));
-        mRequest.setMimeType(mimeString);
-        //sdcard的目录下的download文件夹
-        mDiffPatch = Environment.getExternalStorageDirectory() + File.separator + "hybrid" + File.separator + "diff.patch";
-        File file = new File(mDiffPatch);
-        if (file != null && file.exists()) {
-            file.delete();//删除掉存在的file
-        }
-        mRequest.setDestinationUri(Uri.fromFile(file));//指定apk缓存路径
-        //        mRequest.setDestinationInExternalPublicDir("/hybrid/", "diff.patch");
-        mRequest.setShowRunningNotification(false);
-        mRequest.setVisibleInDownloadsUi(false);
-        downloadManager.enqueue(mRequest);
-        //        queryDownloadStatus();
+    private String createPathSuffix(String url) {
+        int index = url.lastIndexOf(".");
+        String suffix = url.substring(index + 1, url.length());
+        Log.d("Lip", "downloadFile: " + suffix);
+        String filePath = Environment.getExternalStorageDirectory() + File.separator + "hybrid" + File.separator + "diff." + suffix;
+        return filePath;
     }
 
 
-    private void patchApk() {
+    private void patchApk(String fileName) {
+        int versionCode =Utils.getAppVersion(MainActivity.this);
         File oldApk = this.getFileStreamPath("plug_old.zip");
         String oldApkPath = oldApk.getPath();
         File patchFile = this.getFileStreamPath("diff.patch");
-        File file = new File(mDiffPatch);
+        File file = new File(fileName);
         String patchFilePath = "";
         if (file != null && file.exists()) {
-            patchFilePath = mDiffPatch;
+            patchFilePath = fileName;
         } else {
-            patchFilePath = patchFile.getPath();
+            patchFilePath = patchFile.getAbsolutePath();
         }
         Log.d("TAG", "patchApk: " + patchFilePath);
-        mNewFilePath = Environment.getExternalStorageDirectory() + File.separator + "hybrid" + File.separator + "new3.zip";
-
+        String mNewFilePath = Environment.getExternalStorageDirectory() + File.separator + "hybrid" + File.separator + "new.zip";
         try {
             int patchResult = PatchUtils.patch(oldApkPath, mNewFilePath, patchFilePath);
-            if (patchResult == 0) {
-                Log.e("bao", patchResult + "");
+            if (patchResult == 0 && !TextUtils.isEmpty(fileName)) {
+                Log.e("Lip", String.valueOf(patchResult));
                 handler.sendEmptyMessage(FLAG_SUCCESS);
+                versionCode +=1;
+                Log.d("Lip", "patchApk: versionCode="+versionCode);
+                SpUtils.getInstance().setParam(MainActivity.this,APP_VERSION,versionCode);
             } else {
                 handler.sendEmptyMessage(FLAG_FAIL);
             }
