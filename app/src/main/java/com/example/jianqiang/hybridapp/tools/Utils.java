@@ -2,6 +2,8 @@ package com.example.jianqiang.hybridapp.tools;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.net.Uri;
 import android.os.Build;
@@ -48,7 +50,7 @@ public class Utils {
 
     }
 
-    private static void closeSilently(Closeable closeable) {
+    public static void closeSilently(Closeable closeable) {
         if (closeable == null) {
             return;
         }
@@ -59,21 +61,12 @@ public class Utils {
         }
     }
 
-    /**
-     * 安装Apk
-     *
-     * @param context
-     * @param apkPath
-     */
-//    public static void installApk(Context context, String apkPath) {
-//
-//        Intent intent = new Intent(Intent.ACTION_VIEW);
-//        intent.setDataAndType(Uri.parse("file://" + apkPath),
-//                "application/vnd.android.package-archive");
-//
-//        context.startActivity(intent);
-//    }
 
+    /**
+     * 处理7.0兼容问题
+     * @param context
+     * @param file
+     */
     public static void installApk(Context context, File file) {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         Uri data;
@@ -88,5 +81,22 @@ public class Utils {
         }
         intent.setDataAndType(data, "application/vnd.android.package-archive");
         context.startActivity(intent);
+    }
+
+    /**
+     * 获取版本号
+     *
+     * @return 当前应用的版本号
+     */
+    public static int getAppVersion(Context context) {
+        try {
+            PackageManager manager = context.getPackageManager();
+            PackageInfo info = manager.getPackageInfo(context.getPackageName(), 0);
+            int version = info.versionCode;
+            return version;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
     }
 }
